@@ -69,7 +69,7 @@ fn setup(
     commands.spawn((
         DirectionalLight {
             illuminance: 3000.0,
-            shadows_enabled: true,
+            shadow_maps_enabled: true,
             ..default()
         },
         Transform::default().looking_at(Vec3::new(-1.0, -2.5, -1.5), Vec3::Y),
@@ -85,10 +85,10 @@ fn setup(
             p.spawn((
                 NavMeshSettings {
                     fixed: Triangulation::from_outer_edges(&[
-                        vec2(0.0, 0.0),
-                        vec2(MESH_UNIT as f32, 0.0),
-                        vec2(MESH_UNIT as f32, MESH_UNIT as f32 * 2.0),
-                        vec2(0.0, MESH_UNIT as f32 * 2.0),
+                        nav_vec2(0.0, 0.0),
+                        nav_vec2(MESH_UNIT as f32, 0.0),
+                        nav_vec2(MESH_UNIT as f32, MESH_UNIT as f32 * 2.0),
+                        nav_vec2(0.0, MESH_UNIT as f32 * 2.0),
                     ]),
                     simplify: 0.001,
                     merge_steps: 3,
@@ -143,10 +143,10 @@ fn setup(
             p.spawn((
                 NavMeshSettings {
                     fixed: Triangulation::from_outer_edges(&[
-                        vec2(0.0, 0.0),
-                        vec2(MESH_UNIT as f32, 0.0),
-                        vec2(MESH_UNIT as f32, MESH_UNIT as f32 * 2.0),
-                        vec2(0.0, MESH_UNIT as f32 * 2.0),
+                        nav_vec2(0.0, 0.0),
+                        nav_vec2(MESH_UNIT as f32, 0.0),
+                        nav_vec2(MESH_UNIT as f32, MESH_UNIT as f32 * 2.0),
+                        nav_vec2(0.0, MESH_UNIT as f32 * 2.0),
                     ]),
                     simplify: 0.001,
                     merge_steps: 3,
@@ -204,10 +204,10 @@ fn setup(
             p.spawn((
                 NavMeshSettings {
                     fixed: Triangulation::from_outer_edges(&[
-                        vec2(0.0, 0.0),
-                        vec2(MESH_UNIT as f32, 0.0),
-                        vec2(MESH_UNIT as f32, MESH_UNIT as f32 * 2.0),
-                        vec2(0.0, MESH_UNIT as f32 * 2.0),
+                        nav_vec2(0.0, 0.0),
+                        nav_vec2(MESH_UNIT as f32, 0.0),
+                        nav_vec2(MESH_UNIT as f32, MESH_UNIT as f32 * 2.0),
+                        nav_vec2(0.0, MESH_UNIT as f32 * 2.0),
                     ]),
                     simplify: 0.001,
                     merge_steps: 3,
@@ -384,7 +384,9 @@ fn display_path(
         let Some(path) = navmesh.transformed_path(points.0, points.1) else {
             continue;
         };
-        let start = navmesh.get().get_point_layer(points.0.xz())[0];
+        let start = navmesh
+            .get()
+            .get_point_layer(NavVec2::new(points.0.x, points.0.z))[0];
 
         let mut path = path
             .path_with_layers

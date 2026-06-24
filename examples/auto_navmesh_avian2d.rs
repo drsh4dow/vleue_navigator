@@ -1,5 +1,5 @@
 use avian2d::{math::*, prelude::*};
-use bevy::{color::palettes, math::vec2, prelude::*, sprite_render::ColorMaterial};
+use bevy::{color::palettes, prelude::*, sprite_render::ColorMaterial};
 use rand::Rng;
 use vleue_navigator::prelude::*;
 
@@ -73,7 +73,7 @@ fn setup(
     for x in (-50..50).step_by(step).skip(1) {
         for (yi, y) in (-50..50).step_by(step).skip(1).enumerate() {
             commands.spawn((
-                Mesh2d(peg_mesh.clone().into()),
+                Mesh2d(peg_mesh.clone()),
                 MeshMaterial2d(peg_material.clone()),
                 Transform::from_xyz(
                     (x as f32
@@ -99,7 +99,7 @@ fn setup(
     for x in (-50..50).step_by(5).skip(1) {
         let start = Vec3::new(x as f32 * 9.5, 300.0, 0.0);
         commands.spawn((
-            Mesh2d(marble_mesh.clone().into()),
+            Mesh2d(marble_mesh.clone()),
             MeshMaterial2d(marble_material.clone()),
             Transform::from_translation(start),
             RigidBody::Dynamic,
@@ -120,10 +120,10 @@ fn setup(
         NavMeshSettings {
             // Define the outer borders of the navmesh.
             fixed: Triangulation::from_outer_edges(&[
-                vec2(-500.0, -500.0),
-                vec2(500.0, -500.0),
-                vec2(500.0, 500.0),
-                vec2(-500.0, 500.0),
+                nav_vec2(-500.0, -500.0),
+                nav_vec2(500.0, -500.0),
+                nav_vec2(500.0, 500.0),
+                nav_vec2(-500.0, 500.0),
             ]),
             agent_radius: 5.0,
             simplify: 4.0,
@@ -184,10 +184,10 @@ pub fn move_puck(
         let move_direction = path.current - transform.translation;
         transform.translation += move_direction.normalize() * time.delta_secs() * 100.0;
 
-        if transform.translation.distance(path.current) < 10.0 {
-            if let Some(next) = path.next.pop() {
-                path.current = next;
-            }
+        if transform.translation.distance(path.current) < 10.0
+            && let Some(next) = path.next.pop()
+        {
+            path.current = next;
         }
         if transform.translation.distance(path.current) < 50.0 && path.next.is_empty() {
             commands

@@ -18,7 +18,7 @@ use bevy::{
 };
 use polyanya::{Layer, Mesh, Triangulation};
 
-use crate::{NavMesh, obstacles::ObstacleSource};
+use crate::{NavMesh, obstacles::ObstacleSource, to_polyanya_vec2};
 
 /// A Marker component for an obstacle that can be cached.
 ///
@@ -192,7 +192,7 @@ impl Default for NavMeshUpdateMode {
     }
 }
 
-/// If this component is added to an entity with the [`NavMeshBundle`], updating the [`NavMesh`] will be blocking.
+/// If this component is added to an entity with [`NavMeshSettings`], updating the [`NavMesh`] will be blocking.
 /// Otherwise, it will be done asynchronous and occur on the [`AsyncComputeTaskPool`].
 ///
 /// This can cause the game to lag if updating the [`NavMesh`] takes longer than a frame. This is not recommended to use.
@@ -208,7 +208,15 @@ fn build_navmesh<T: ObstacleSource>(
 ) -> (Option<Triangulation>, Layer) {
     let up = (mesh_transform.forward(), settings.upward_shift);
     let scale = settings.scale;
-    let base = if settings.cached.is_none() {
+    let to_polyanya_polygon = |polygon: Vec<Vec2>| {
+        polygon
+            .into_iter()
+            .map(|v| to_polyanya_vec2(v / scale))
+            .collect::<Vec<_>>()
+    };
+    let base = if let Some(cached) = settings.cached {
+        cached
+    } else {
         let mut base = settings.fixed;
         base.set_agent_radius(settings.agent_radius);
         base.set_agent_radius_simplification(settings.simplify);
@@ -221,15 +229,13 @@ fn build_navmesh<T: ObstacleSource>(
                     .into_iter()
             })
             .filter(|p: &Vec<Vec2>| !p.is_empty())
-            .map(|p| p.into_iter().map(|v| v / scale).collect::<Vec<_>>());
+            .map(to_polyanya_polygon);
         base.add_obstacles(obstacle_polys);
         if settings.simplify != 0.0 {
             base.simplify(settings.simplify);
         }
         base.prebuild();
         base
-    } else {
-        settings.cached.unwrap()
     };
     let mut triangulation = base.clone();
 
@@ -241,7 +247,7 @@ fn build_navmesh<T: ObstacleSource>(
                 .into_iter()
         })
         .filter(|p: &Vec<Vec2>| !p.is_empty())
-        .map(|p| p.into_iter().map(|v| v / scale).collect::<Vec<_>>());
+        .map(to_polyanya_polygon);
     triangulation.add_obstacles(obstacle_polys);
 
     if settings.simplify != 0.0 {
@@ -254,7 +260,7 @@ fn build_navmesh<T: ObstacleSource>(
     }
     #[cfg(feature = "detailed-layers")]
     {
-        layer.scale = scale;
+        layer.scale = to_polyanya_vec2(scale);
     }
     layer.remove_useless_vertices();
     (
@@ -437,7 +443,7 @@ fn trigger_navmesh_build<Marker: Component, Obstacle: ObstacleSource>(
                 cachable_obstacles
                     .iter()
                     .filter_map(|(e, t, o, _)| {
-                        (!settings.ignore_obstacles.contains(&e)).then_some((*t, o.clone()))
+                        (!settings.ignore_obstacles.contains(&e)).then_some((*t, (*o).clone()))
                     })
                     .collect::<Vec<_>>()
             } else {
@@ -446,7 +452,8 @@ fn trigger_navmesh_build<Marker: Component, Obstacle: ObstacleSource>(
             let obstacles_local = dynamic_obstacles
                 .iter()
                 .filter_map(|(e, t, o)| {
-                    (!settings.ignore_obstacles.contains(&e)).then_some((*t, o.clone()))
+                    (!settings.ignore_obstacles.contains(&e))
+                        .then_some((*t, o.into_inner().clone()))
                 })
                 .collect::<Vec<_>>();
             let settings_local = settings.clone();
@@ -568,7 +575,8 @@ fn update_navmesh_asset(
                 mesh.remove_stitches_to_layer(*layer_id);
                 mesh.layers[*layer_id as usize] = layer;
                 // TODO: rotate this to get the value in the correct space
-                mesh.layers[*layer_id as usize].offset = global_transform.translation().xz();
+                mesh.layers[*layer_id as usize].offset =
+                    to_polyanya_vec2(global_transform.translation().xz());
 
                 let stitch_segments =
                     settings
@@ -598,12 +606,12 @@ fn update_navmesh_asset(
                     let layer_to = &mesh.layers[*target_layer as usize];
 
                     let indices_from = layer_from.get_vertices_on_segment(
-                        stitch_segment[0] - layer_from.offset,
-                        stitch_segment[1] - layer_from.offset,
+                        to_polyanya_vec2(stitch_segment[0]) - layer_from.offset,
+                        to_polyanya_vec2(stitch_segment[1]) - layer_from.offset,
                     );
                     let indices_to = layer_to.get_vertices_on_segment(
-                        stitch_segment[0] - layer_to.offset,
-                        stitch_segment[1] - layer_to.offset,
+                        to_polyanya_vec2(stitch_segment[0]) - layer_to.offset,
+                        to_polyanya_vec2(stitch_segment[1]) - layer_to.offset,
                     );
                     if indices_from.len() != indices_to.len() {
                         debug!(
@@ -615,10 +623,8 @@ fn update_navmesh_asset(
                         continue 'stitching;
                     }
 
-                    let stitch_indices = indices_from
-                        .into_iter()
-                        .zip(indices_to.into_iter())
-                        .collect::<Vec<_>>();
+                    let stitch_indices =
+                        indices_from.into_iter().zip(indices_to).collect::<Vec<_>>();
                     for indices in &stitch_indices {
                         if (layer_from.vertices[indices.0].coords + layer_from.offset)
                             .distance_squared(layer_to.vertices[indices.1].coords + layer_to.offset)
@@ -652,7 +658,7 @@ fn update_navmesh_asset(
                     navmeshes
                         .insert(&handle.0, navmesh)
                         .expect("Failed to update navmesh");
-                } else if let Some(navmesh) = navmeshes.get_mut(&handle.0) {
+                } else if let Some(mut navmesh) = navmeshes.get_mut(&handle.0) {
                     failed_stitches.extend(previously_failed);
                     failed_stitches.sort_unstable();
                     failed_stitches.dedup();
@@ -688,7 +694,7 @@ fn update_navmesh_asset(
 ///
 /// # Example
 ///
-/// When using [`Aabb`](bevy::camera::primitives::Aabb) as the obstacle shape, the [`Obstacle`] component should be [`Aabb`](bevy::render::primitives::Aabb), and you should use a `Marker` component type of your own to differentiate between entities that are obstacles and those that aren't.
+/// When using [`Aabb`](bevy::camera::primitives::Aabb) as the obstacle shape, the `Obstacle` component should be [`Aabb`](bevy::camera::primitives::Aabb), and you should use a `Marker` component type of your own to differentiate between entities that are obstacles and those that aren't.
 ///
 /// ```no_run
 /// use bevy::{

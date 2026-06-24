@@ -1,11 +1,11 @@
 use std::{f32::consts::FRAC_PI_2, fs::File};
 
 use bevy::{
+    camera::Hdr,
     color::palettes::{self},
     core_pipeline::tonemapping::Tonemapping,
     post_process::bloom::Bloom,
     prelude::*,
-    render::view::Hdr,
 };
 use vleue_navigator::{VleueNavigatorPlugin, display_layer_gizmo, prelude::*};
 
@@ -94,6 +94,18 @@ struct RecastNavmesh(polyanya::Mesh);
 #[derive(Resource)]
 struct Layers(Vec<bool>);
 
+fn to_polyanya_vec2(v: Vec2) -> NavVec2 {
+    NavVec2::new(v.x, v.y)
+}
+
+fn to_polyanya_vec3(v: Vec3) -> NavVec3 {
+    NavVec3::new(v.x, v.y, v.z)
+}
+
+fn to_bevy_vec3(v: NavVec3) -> Vec3 {
+    Vec3::new(v.x, v.y, v.z)
+}
+
 fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands.spawn((
         Camera3d::default(),
@@ -105,14 +117,14 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
         Bloom::NATURAL,
     ));
 
-    commands.spawn(SceneRoot(
+    commands.spawn(WorldAssetRoot(
         asset_server.load(GltfAssetLabel::Scene(0).from_asset("recast/dungeon.glb")),
     ));
 
     commands.spawn((
         DirectionalLight {
             illuminance: light_consts::lux::OVERCAST_DAY,
-            shadows_enabled: true,
+            shadow_maps_enabled: true,
             ..default()
         },
         Transform::from_xyz(1.0, 1.0, 0.0).looking_at(Vec3::ZERO, Vec3::Y),
@@ -125,12 +137,8 @@ fn draw_navmesh(
     layers: Res<Layers>,
 ) {
     let mesh = &recast.0;
-    let colors: Vec<Color> = LAYER_COLORS
-        .iter()
-        .map(|color| color.clone().into())
-        .collect();
-    for (layer, (color, enabled)) in mesh.layers.iter().zip(colors.iter().zip(layers.0.iter())) {
-        let mut color = *color;
+    for (layer, (color, enabled)) in mesh.layers.iter().zip(LAYER_COLORS.iter().zip(&layers.0)) {
+        let mut color: Color = (*color).into();
         if !enabled {
             color.set_alpha(0.2);
         }
@@ -143,6 +151,7 @@ fn draw_navmesh(
     }
 }
 
+#[allow(clippy::excessive_precision)]
 fn draw_path(
     mut path_gizmos: Gizmos<PathGizmos>,
     mut gizmos: Gizmos,
@@ -157,8 +166,8 @@ fn draw_path(
 
     let mesh = &recast.0;
     let Some(path) = mesh.path_on_layers(
-        start.xz(),
-        end.xz(),
+        to_polyanya_vec2(start.xz()),
+        to_polyanya_vec2(end.xz()),
         layers
             .0
             .iter()
@@ -169,7 +178,11 @@ fn draw_path(
         return;
     };
 
-    let mut path_with_height = path.path_with_height(start, end, mesh);
+    let mut path_with_height = path
+        .path_with_height(to_polyanya_vec3(start), to_polyanya_vec3(end), mesh)
+        .into_iter()
+        .map(to_bevy_vec3)
+        .collect::<Vec<_>>();
 
     for point in &path_with_height {
         path_gizmos.sphere(*point, 0.1, palettes::tailwind::BLUE_600);
@@ -193,11 +206,11 @@ fn layers_info(mut commands: Commands, layers: Res<Layers>, texts: Query<Entity,
         ))
         .with_children(|p| {
             let font_size = TextFont {
-                font_size: 15.0,
+                font_size: 15.0.into(),
                 ..default()
             };
             for layer in layers.0.iter().enumerate() {
-                let color = LAYER_COLORS[layer.0].clone().into();
+                let color = LAYER_COLORS[layer.0].into();
                 p.spawn((
                     TextSpan::new(format!("Layer {}: ", layer.0)),
                     TextColor(color),
@@ -233,14 +246,15 @@ fn switch_layers(mut layers: ResMut<Layers>, input: Res<ButtonInput<KeyCode>>) {
     .iter()
     .enumerate()
     {
-        if input.just_pressed(*key) {
-            if let Some(layer) = layers.0.get_mut(index) {
-                *layer = !*layer;
-            }
+        if input.just_pressed(*key)
+            && let Some(layer) = layers.0.get_mut(index)
+        {
+            *layer = !*layer;
         }
     }
 }
 
+#[allow(clippy::too_many_arguments, clippy::excessive_precision)]
 fn autonomous_demo(
     mut camera_transform: Single<&mut Transform, (Without<Agent>, With<Camera>)>,
     input: Res<ButtonInput<KeyCode>>,
@@ -383,14 +397,17 @@ fn autonomous_demo(
         .filter_map(|(n, e)| (!e).then_some(n as u8))
         .collect();
     for (entity, mut transform, material) in &mut agents {
-        let Some(path) = mesh.path_on_layers(transform.translation.xz(), end.xz(), layers.clone())
-        else {
+        let Some(path) = mesh.path_on_layers(
+            to_polyanya_vec2(transform.translation.xz()),
+            to_polyanya_vec2(end.xz()),
+            layers.clone(),
+        ) else {
             continue;
         };
         if *bloomed {
             let next_polygon_in_path = path.polygons().first().unwrap().0;
             let material = materials.get_mut(material.id());
-            let material = material.unwrap();
+            let mut material = material.unwrap();
             if next_polygon_in_path == 2 {
                 material.emissive = Srgba::new(0.6, 10.0, 0.2, 1.0).into();
             } else {
@@ -400,9 +417,14 @@ fn autonomous_demo(
                 material.base_color = LAYER_COLORS[next_polygon_in_path as usize].into();
             }
         }
-        let move_dir = (path.path_with_height(transform.translation, end, mesh)[0]
-            - transform.translation)
-            .normalize();
+        let next = to_bevy_vec3(
+            path.path_with_height(
+                to_polyanya_vec3(transform.translation),
+                to_polyanya_vec3(end),
+                mesh,
+            )[0],
+        );
+        let move_dir = (next - transform.translation).normalize();
         transform.translation += move_dir / 10.0;
         if *finished {
             transform.translation += move_dir / 15.0;

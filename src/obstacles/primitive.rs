@@ -11,7 +11,7 @@ use crate::world_to_mesh;
 
 use super::{ObstacleSource, RESOLUTION};
 
-/// A primitive obstacle that can be used to create a [`NavMesh`].
+/// A primitive obstacle that can be used to create a [`NavMesh`](crate::NavMesh).
 /// Variants are made from primitive shapes defined in Bevy
 #[derive(Component, Debug, Clone)]
 pub enum PrimitiveObstacle {

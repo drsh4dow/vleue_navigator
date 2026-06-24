@@ -67,7 +67,7 @@ fn setup(
     commands.spawn((
         DirectionalLight {
             illuminance: 3000.0,
-            shadows_enabled: true,
+            shadow_maps_enabled: true,
             ..default()
         },
         Transform::default().looking_at(Vec3::new(-1.0, -2.5, -1.5), Vec3::Y),
@@ -83,10 +83,10 @@ fn setup(
             p.spawn((
                 NavMeshSettings {
                     fixed: Triangulation::from_outer_edges(&[
-                        vec2(0.0, 0.0),
-                        vec2(MESH_UNIT as f32, 0.0),
-                        vec2(MESH_UNIT as f32, MESH_UNIT as f32 * 2.0),
-                        vec2(0.0, MESH_UNIT as f32 * 2.0),
+                        nav_vec2(0.0, 0.0),
+                        nav_vec2(MESH_UNIT as f32, 0.0),
+                        nav_vec2(MESH_UNIT as f32, MESH_UNIT as f32 * 2.0),
+                        nav_vec2(0.0, MESH_UNIT as f32 * 2.0),
                     ]),
                     simplify: 0.001,
                     merge_steps: 3,
@@ -130,10 +130,10 @@ fn setup(
             p.spawn((
                 NavMeshSettings {
                     fixed: Triangulation::from_outer_edges(&[
-                        vec2(0.0, 0.0),
-                        vec2(MESH_UNIT as f32, 0.0),
-                        vec2(MESH_UNIT as f32, MESH_UNIT as f32 * 2.0),
-                        vec2(0.0, MESH_UNIT as f32 * 2.0),
+                        nav_vec2(0.0, 0.0),
+                        nav_vec2(MESH_UNIT as f32, 0.0),
+                        nav_vec2(MESH_UNIT as f32, MESH_UNIT as f32 * 2.0),
+                        nav_vec2(0.0, MESH_UNIT as f32 * 2.0),
                     ]),
                     simplify: 0.001,
                     merge_steps: 3,

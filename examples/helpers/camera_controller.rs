@@ -124,6 +124,7 @@ Freecam Controls:
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn run_camera_controller(
     time: Res<Time>,
     mut windows: Query<(&mut Window, &mut CursorOptions)>,

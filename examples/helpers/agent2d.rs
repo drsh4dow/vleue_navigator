@@ -29,6 +29,7 @@ pub fn setup_agent<const SIZE: u32>(mut commands: Commands) {
     ));
 }
 
+#[allow(clippy::type_complexity)]
 pub fn give_target_to_navigator<const SIZE: u32, const X: u32, const Y: u32>(
     mut commands: Commands,
     navigator: Query<(Entity, &Transform), (With<Navigator>, Without<Path>)>,
@@ -95,7 +96,7 @@ pub fn refresh_path<const SIZE: u32, const X: u32, const Y: u32>(
     if (!status.is_changed() || **status != NavMeshStatus::Built) && *delta == 0.0 {
         return;
     }
-    let Some(navmesh) = navmeshes.get_mut(*navmesh_handle) else {
+    let Some(mut navmesh) = navmeshes.get_mut(*navmesh_handle) else {
         return;
     };
 

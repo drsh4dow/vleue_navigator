@@ -49,7 +49,7 @@ fn button(text: &str, action: UiSettingsButtons, parent: &mut ChildSpawnerComman
             parent.spawn((
                 Text(text.to_string()),
                 TextFont {
-                    font_size: 20.0,
+                    font_size: 20.0.into(),
                     ..default()
                 },
             ));
@@ -81,7 +81,7 @@ pub fn setup_settings<const WITH_CACHE: bool>(mut commands: Commands) {
                     .spawn((
                         Text("Simplify: ".to_string()),
                         TextFont {
-                            font_size: 20.0,
+                            font_size: 20.0.into(),
                             ..default()
                         },
                         TextLayout {
@@ -93,7 +93,7 @@ pub fn setup_settings<const WITH_CACHE: bool>(mut commands: Commands) {
                     .with_child((
                         TextSpan::default(),
                         TextFont {
-                            font_size: 20.0,
+                            font_size: 20.0.into(),
                             ..default()
                         },
                     ));
@@ -105,7 +105,7 @@ pub fn setup_settings<const WITH_CACHE: bool>(mut commands: Commands) {
                     .spawn((
                         Text("Merge Steps: ".to_string()),
                         TextFont {
-                            font_size: 20.0,
+                            font_size: 20.0.into(),
                             ..default()
                         },
                         TextLayout {
@@ -117,7 +117,7 @@ pub fn setup_settings<const WITH_CACHE: bool>(mut commands: Commands) {
                     .with_child((
                         TextSpan::default(),
                         TextFont {
-                            font_size: 20.0,
+                            font_size: 20.0.into(),
                             ..default()
                         },
                     ));
@@ -129,7 +129,7 @@ pub fn setup_settings<const WITH_CACHE: bool>(mut commands: Commands) {
                     .spawn((
                         Text("Agent Radius: ".to_string()),
                         TextFont {
-                            font_size: 20.0,
+                            font_size: 20.0.into(),
                             ..default()
                         },
                         TextLayout {
@@ -141,7 +141,7 @@ pub fn setup_settings<const WITH_CACHE: bool>(mut commands: Commands) {
                     .with_child((
                         TextSpan::default(),
                         TextFont {
-                            font_size: 20.0,
+                            font_size: 20.0.into(),
                             ..default()
                         },
                     ));
@@ -169,7 +169,7 @@ pub fn setup_settings<const WITH_CACHE: bool>(mut commands: Commands) {
                     parent.spawn((
                         Text("Agent Radius on Outer Edges".to_string()),
                         TextFont {
-                            font_size: 20.0,
+                            font_size: 20.0.into(),
                             ..default()
                         },
                     ));
@@ -195,7 +195,7 @@ pub fn setup_settings<const WITH_CACHE: bool>(mut commands: Commands) {
                         parent.spawn((
                             Text("Cache".to_string()),
                             TextFont {
-                                font_size: 20.0,
+                                font_size: 20.0.into(),
                                 ..default()
                             },
                         ));
@@ -257,6 +257,7 @@ pub fn display_settings(
     }
 }
 
+#[allow(clippy::type_complexity)]
 pub fn update_settings<const STEP: u32>(
     mut interaction_query: Query<
         (
@@ -358,7 +359,7 @@ pub fn setup_stats<const INTERACTIVE: bool>(mut commands: Commands) {
                     p.spawn((
                         TextSpan::new(text),
                         TextFont {
-                            font_size,
+                            font_size: font_size.into(),
                             ..default()
                         },
                     ));

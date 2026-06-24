@@ -83,7 +83,7 @@ fn setup(
     for (x, y) in [(0.25, 0.25), (0.75, 0.25), (0.25, 0.75), (0.75, 0.75)] {
         commands.spawn((
             PointLight {
-                shadows_enabled: true,
+                shadow_maps_enabled: true,
                 intensity: MESH_WIDTH.min(MESH_HEIGHT) as f32 * 300_000.0,
                 range: MESH_WIDTH.min(MESH_HEIGHT) as f32 * 10.0,
                 ..default()
@@ -101,10 +101,10 @@ fn setup(
         NavMeshSettings {
             // Define the outer borders of the navmesh.
             fixed: Triangulation::from_outer_edges(&[
-                vec2(0.0, 0.0),
-                vec2(MESH_WIDTH as f32, 0.0),
-                vec2(MESH_WIDTH as f32, MESH_HEIGHT as f32),
-                vec2(0.0, MESH_HEIGHT as f32),
+                nav_vec2(0.0, 0.0),
+                nav_vec2(MESH_WIDTH as f32, 0.0),
+                nav_vec2(MESH_WIDTH as f32, MESH_HEIGHT as f32),
+                nav_vec2(0.0, MESH_HEIGHT as f32),
             ]),
             simplify: 0.05,
             merge_steps: 0,

@@ -54,6 +54,7 @@ struct PathToDisplay {
     steps: Vec<Vec2>,
 }
 
+#[allow(clippy::too_many_arguments)]
 fn on_mesh_change(
     mut path_to_display: ResMut<PathToDisplay>,
     mut commands: Commands,
@@ -85,7 +86,7 @@ fn on_mesh_change(
     *current_mesh_entity = Some(
         commands
             .spawn((
-                Mesh2d(meshes.add(navmesh.to_mesh()).into()),
+                Mesh2d(meshes.add(navmesh.to_mesh())),
                 Transform::from_translation(Vec3::new(
                     -MESH_WIDTH / 2.0 * factor,
                     -MESH_HEIGHT / 2.0 * factor,
@@ -98,7 +99,7 @@ fn on_mesh_change(
             ))
             .with_children(|main_mesh| {
                 main_mesh.spawn((
-                    Mesh2d(meshes.add(navmesh.to_wireframe_mesh()).into()),
+                    Mesh2d(meshes.add(navmesh.to_wireframe_mesh())),
                     Transform::from_translation(Vec3::new(0.0, 0.0, 0.1)),
                     MeshMaterial2d(materials.add(ColorMaterial::from(Color::srgb(0.5, 0.5, 1.0)))),
                 ));
@@ -125,21 +126,21 @@ fn on_mesh_change(
             p.spawn((
                 TextSpan::new("Random Triangle Obstacles\n".to_string()),
                 TextFont {
-                    font_size: 30.0,
+                    font_size: 30.0.into(),
                     ..default()
                 },
             ));
             p.spawn((
                 TextSpan::new("Press spacebar to change obstacles\n".to_string()),
                 TextFont {
-                    font_size: 25.0,
+                    font_size: 25.0.into(),
                     ..default()
                 },
             ));
             p.spawn((
                 TextSpan::new("Click to find a path".to_string()),
                 TextFont {
-                    font_size: 25.0,
+                    font_size: 25.0.into(),
                     ..default()
                 },
             ));
@@ -236,7 +237,7 @@ fn compute_paths(
         let navmesh = navmeshes.get(&meshes.0).unwrap();
         if let Some(path) = navmesh.path(*path_to_display.steps.last().unwrap(), ev.0) {
             for p in path.path {
-                path_to_display.steps.push(p);
+                path_to_display.steps.push(Vec2::new(p.x, p.y));
             }
         } else {
             info!("no path found");

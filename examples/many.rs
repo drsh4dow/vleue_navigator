@@ -117,7 +117,7 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
                 p.spawn((
                     TextSpan::new(text.to_string()),
                     TextFont {
-                        font_size,
+                        font_size: font_size.into(),
                         ..default()
                     },
                 ));
@@ -125,6 +125,7 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
         });
 }
 
+#[allow(clippy::too_many_arguments)]
 fn on_mesh_change(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
@@ -148,7 +149,7 @@ fn on_mesh_change(
             *current_mesh_entity = Some(
                 commands
                     .spawn((
-                        Mesh2d(meshes.add(navmesh.to_mesh()).into()),
+                        Mesh2d(meshes.add(navmesh.to_mesh())),
                         Transform::from_translation(Vec3::new(
                             -MESH_SIZE.x / 2.0 * factor,
                             -MESH_SIZE.y / 2.0 * factor,
@@ -312,7 +313,9 @@ fn poll_path_tasks(
             if let Some(path) = task.path.take() {
                 commands
                     .entity(entity)
-                    .insert(Path { path: path.path })
+                    .insert(Path {
+                        path: path.path.into_iter().map(|p| Vec2::new(p.x, p.y)).collect(),
+                    })
                     .remove::<FindingPath>();
             } else {
                 let window = *primary_window;
@@ -364,6 +367,7 @@ fn move_navigator(
         });
 }
 
+#[allow(clippy::type_complexity)]
 fn go_somewhere(
     query: Query<
         Entity,
@@ -386,6 +390,7 @@ fn go_somewhere(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn update_ui(
     ui_query: Query<Entity, With<Text>>,
     mut text_writer: TextUiWriter,
@@ -440,10 +445,10 @@ fn self_regulate(
     not_moving: Query<(Entity, Ref<GlobalTransform>), With<Navigator>>,
 ) {
     for (entity, transform) in &not_moving {
-        if !transform.is_changed() {
-            if system.this_run().get() - transform.last_changed().get() > 100000 {
-                commands.entity(entity).despawn();
-            }
+        if !transform.is_changed()
+            && system.this_run().get() - transform.last_changed().get() > 100000
+        {
+            commands.entity(entity).despawn();
         }
     }
 }

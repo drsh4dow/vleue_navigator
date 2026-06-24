@@ -45,14 +45,14 @@ pub mod prelude {
         CachableObstacle, ManagedNavMesh, NAVMESH_BUILD_DURATION, NavMeshSettings, NavMeshStatus,
         NavMeshUpdateMode, NavMeshUpdateModeBlocking, NavmeshUpdaterPlugin,
     };
-    pub use crate::{NavMesh, Triangulation, VleueNavigatorPlugin};
+    pub use crate::{NavMesh, NavVec2, NavVec3, Triangulation, VleueNavigatorPlugin, nav_vec2};
     #[cfg(feature = "debug-with-gizmos")]
     pub use crate::{NavMeshDebug, NavMeshesDebug};
 }
 
 /// Bevy plugin to add support for the [`NavMesh`] asset type.
 ///
-/// This plugin doesn't add support for updating them. See [`NavmeshUpdaterPlugin`] for that.
+/// This plugin doesn't add support for updating them. See [`NavmeshUpdaterPlugin`](crate::updater::NavmeshUpdaterPlugin) for that.
 #[derive(Debug, Clone, Copy)]
 pub struct VleueNavigatorPlugin;
 
@@ -103,6 +103,17 @@ pub struct TransformedPath {
 use polyanya::Trimesh;
 pub use polyanya::{Path, Triangulation};
 
+/// Coordinate types used by Polyanya inputs and paths.
+pub use polyanya_glam::{Vec2 as NavVec2, Vec3 as NavVec3, vec2 as nav_vec2};
+
+pub(crate) fn to_polyanya_vec2(v: Vec2) -> NavVec2 {
+    NavVec2::new(v.x, v.y)
+}
+
+pub(crate) fn to_bevy_vec3(v: NavVec3) -> Vec3 {
+    Vec3::new(v.x, v.y, v.z)
+}
+
 #[derive(Debug, Clone)]
 pub(crate) struct BuildingMesh {
     pub(crate) mesh: polyanya::Mesh,
@@ -148,7 +159,7 @@ impl NavMesh {
         let vertices = get_vectors(mesh, Mesh::ATTRIBUTE_POSITION)
             .expect("can't extract a navmesh from a mesh without `Mesh::ATTRIBUTE_POSITION`")
             .map(|vertex| rotation_reverse.mul_vec3(vertex))
-            .map(|coords| coords.xy())
+            .map(|coords| to_polyanya_vec2(coords.xy()))
             .collect();
 
         let triangles = mesh
@@ -188,6 +199,13 @@ impl NavMesh {
     ///
     /// Depending on the scale of your mesh, you should change the [`Self::search_delta`] value using [`Self::set_search_delta`].
     pub fn from_edge_and_obstacles(edges: Vec<Vec2>, obstacles: Vec<Vec<Vec2>>) -> NavMesh {
+        let edges = edges.into_iter().map(to_polyanya_vec2).collect::<Vec<_>>();
+        let obstacles = obstacles.into_iter().map(|obstacle| {
+            obstacle
+                .into_iter()
+                .map(to_polyanya_vec2)
+                .collect::<Vec<_>>()
+        });
         let mut triangulation = Triangulation::from_outer_edges(&edges);
         triangulation.add_obstacles(obstacles);
 
@@ -249,7 +267,9 @@ impl NavMesh {
     /// Asynchronously finds the shortest path between two points.
     #[inline]
     pub async fn get_path(&self, from: Vec2, to: Vec2) -> Option<Path> {
-        self.mesh.get_path(from, to).await
+        self.mesh
+            .get_path(to_polyanya_vec2(from), to_polyanya_vec2(to))
+            .await
     }
 
     /// Asynchronously finds the shortest path between two points.
@@ -258,14 +278,17 @@ impl NavMesh {
     pub async fn get_transformed_path(&self, from: Vec3, to: Vec3) -> Option<TransformedPath> {
         let inner_from = self.world_to_mesh().transform_point(from).xy();
         let inner_to = self.world_to_mesh().transform_point(to).xy();
-        let path = self.mesh.get_path(inner_from, inner_to).await;
+        let path = self
+            .mesh
+            .get_path(to_polyanya_vec2(inner_from), to_polyanya_vec2(inner_to))
+            .await;
         path.map(|path| self.transform_path(path))
     }
 
     /// Finds the shortest path between two points.
     #[inline]
     pub fn path(&self, from: Vec2, to: Vec2) -> Option<Path> {
-        self.mesh.path(from, to)
+        self.mesh.path(to_polyanya_vec2(from), to_polyanya_vec2(to))
     }
 
     /// Finds the shortest path between two points.
@@ -274,7 +297,9 @@ impl NavMesh {
     pub fn transformed_path(&self, from: Vec3, to: Vec3) -> Option<TransformedPath> {
         let inner_from = self.world_to_mesh().transform_point(from).xy();
         let inner_to = self.world_to_mesh().transform_point(to).xy();
-        let path = self.mesh.path(inner_from, inner_to);
+        let path = self
+            .mesh
+            .path(to_polyanya_vec2(inner_from), to_polyanya_vec2(inner_to));
         path.map(|path| self.transform_path(path))
     }
 
@@ -286,13 +311,18 @@ impl NavMesh {
             path: path
                 .path
                 .into_iter()
-                .map(|coords| transform.transform_point(coords.extend(0.0)))
+                .map(|coords| transform.transform_point(to_bevy_vec3(coords.extend(0.0))))
                 .collect(),
             #[cfg(feature = "detailed-layers")]
             path_with_layers: path
                 .path_with_layers
                 .into_iter()
-                .map(|(coords, layer)| (transform.transform_point(coords.extend(0.0)), layer))
+                .map(|(coords, layer)| {
+                    (
+                        transform.transform_point(to_bevy_vec3(coords.extend(0.0))),
+                        layer,
+                    )
+                })
                 .collect(),
         }
     }
@@ -300,12 +330,12 @@ impl NavMesh {
     /// Checks if a 3D point is within a navigable part of the mesh, using the [`NavMesh::transform`].
     pub fn transformed_is_in_mesh(&self, point: Vec3) -> bool {
         let point_in_navmesh = self.world_to_mesh().transform_point(point).xy();
-        self.mesh.point_in_mesh(point_in_navmesh)
+        self.mesh.point_in_mesh(to_polyanya_vec2(point_in_navmesh))
     }
 
     /// Checks if a point is within a navigable part of the mesh.
     pub fn is_in_mesh(&self, point: Vec2) -> bool {
-        self.mesh.point_in_mesh(point)
+        self.mesh.point_in_mesh(to_polyanya_vec2(point))
     }
 
     /// Retrieves the transform used to convert world coordinates into mesh coordinates.
@@ -333,7 +363,7 @@ impl NavMesh {
             self.mesh.layers[0]
                 .vertices
                 .iter()
-                .map(|v| v.coords.extend(0.0))
+                .map(|v| to_bevy_vec3(v.coords.extend(0.0)))
                 .map(|coords| mesh_to_world.transform_point(coords).into())
                 .collect::<Vec<[f32; 3]>>(),
         );
@@ -445,6 +475,14 @@ pub fn display_mesh_gizmo<T: bevy::gizmos::config::GizmoConfigGroup>(
 }
 
 #[cfg(feature = "debug-with-gizmos")]
+fn layer_vertex_position(layer: &polyanya::Layer, scale: NavVec2, index: usize) -> Vec3 {
+    to_bevy_vec3(
+        (layer.vertices[index].coords * scale)
+            .extend(-layer.height.get(index).cloned().unwrap_or_default()),
+    )
+}
+
+#[cfg(feature = "debug-with-gizmos")]
 /// Display a layer with gizmos.
 pub fn display_layer_gizmo<T: bevy::gizmos::config::GizmoConfigGroup>(
     layer: &polyanya::Layer,
@@ -455,27 +493,18 @@ pub fn display_layer_gizmo<T: bevy::gizmos::config::GizmoConfigGroup>(
     #[cfg(feature = "detailed-layers")]
     let scale = layer.scale;
     #[cfg(not(feature = "detailed-layers"))]
-    let scale = Vec2::ONE;
+    let scale = NavVec2::ONE;
     for polygon in &layer.polygons {
         let mut v = polygon
             .vertices
             .iter()
             .filter(|i| **i != u32::MAX)
-            .map(|i| {
-                (layer.vertices[*i as usize].coords * scale)
-                    .extend(-layer.height.get(*i as usize).cloned().unwrap_or_default())
-            })
+            .map(|i| layer_vertex_position(layer, scale, *i as usize))
             .map(|v| mesh_to_world.transform_point(v))
             .collect::<Vec<_>>();
         if !v.is_empty() {
             let first_index = polygon.vertices[0] as usize;
-            let first = &layer.vertices[first_index];
-            v.push(
-                mesh_to_world.transform_point(
-                    (first.coords * scale)
-                        .extend(-layer.height.get(first_index).cloned().unwrap_or_default()),
-                ),
-            );
+            v.push(mesh_to_world.transform_point(layer_vertex_position(layer, scale, first_index)));
             gizmos.linestrip(v, color);
         }
     }
@@ -493,27 +522,18 @@ pub fn display_polygon_gizmo<T: bevy::gizmos::config::GizmoConfigGroup>(
     #[cfg(feature = "detailed-layers")]
     let scale = layer.scale;
     #[cfg(not(feature = "detailed-layers"))]
-    let scale = Vec2::ONE;
+    let scale = NavVec2::ONE;
     let polygon = &layer.polygons[polygon as usize];
     let mut v = polygon
         .vertices
         .iter()
         .filter(|i| **i != u32::MAX)
-        .map(|i| {
-            (layer.vertices[*i as usize].coords * scale)
-                .extend(-layer.height.get(*i as usize).cloned().unwrap_or_default())
-        })
+        .map(|i| layer_vertex_position(layer, scale, *i as usize))
         .map(|v| mesh_to_world.transform_point(v))
         .collect::<Vec<_>>();
     if !v.is_empty() {
         let first_index = polygon.vertices[0] as usize;
-        let first = &layer.vertices[first_index];
-        v.push(
-            mesh_to_world.transform_point(
-                (first.coords * scale)
-                    .extend(-layer.height.get(first_index).cloned().unwrap_or_default()),
-            ),
-        );
+        v.push(mesh_to_world.transform_point(layer_vertex_position(layer, scale, first_index)));
         gizmos.linestrip(v, color);
     }
 }
@@ -530,12 +550,12 @@ mod tests {
         let expected_navmesh = NavMesh::from_polyanya_mesh(
             Trimesh {
                 vertices: vec![
-                    Vec2::new(1., 1.),
-                    Vec2::new(5., 1.),
-                    Vec2::new(5., 4.),
-                    Vec2::new(1., 4.),
-                    Vec2::new(2., 2.),
-                    Vec2::new(4., 3.),
+                    NavVec2::new(1., 1.),
+                    NavVec2::new(5., 1.),
+                    NavVec2::new(5., 4.),
+                    NavVec2::new(1., 4.),
+                    NavVec2::new(2., 2.),
+                    NavVec2::new(4., 3.),
                 ],
                 triangles: vec![[4, 1, 0], [5, 2, 1], [3, 2, 5], [3, 5, 1], [3, 4, 0]],
             }
@@ -545,12 +565,12 @@ mod tests {
         let initial_navmesh = NavMesh::from_polyanya_mesh(
             Trimesh {
                 vertices: vec![
-                    Vec2::new(1., 1.),
-                    Vec2::new(5., 1.),
-                    Vec2::new(5., 4.),
-                    Vec2::new(1., 4.),
-                    Vec2::new(2., 2.),
-                    Vec2::new(4., 3.),
+                    NavVec2::new(1., 1.),
+                    NavVec2::new(5., 1.),
+                    NavVec2::new(5., 4.),
+                    NavVec2::new(1., 4.),
+                    NavVec2::new(2., 2.),
+                    NavVec2::new(4., 3.),
                 ],
                 triangles: vec![[0, 1, 4], [1, 2, 5], [5, 2, 3], [1, 5, 3], [0, 4, 3]],
             }
@@ -573,10 +593,10 @@ mod tests {
         let expected_navmesh = NavMesh::from_polyanya_mesh(
             Trimesh {
                 vertices: vec![
-                    Vec2::new(-1., 1.),
-                    Vec2::new(1., 1.),
-                    Vec2::new(-1., -1.),
-                    Vec2::new(1., -1.),
+                    NavVec2::new(-1., 1.),
+                    NavVec2::new(1., 1.),
+                    NavVec2::new(-1., -1.),
+                    NavVec2::new(1., -1.),
                 ],
                 triangles: vec![[3, 1, 0], [2, 3, 0]],
             }

@@ -12,7 +12,7 @@ use bevy::{
     window::{PrimaryWindow, WindowResized},
 };
 
-use vleue_navigator::{NavMesh, VleueNavigatorPlugin};
+use vleue_navigator::{NavMesh, NavVec2, VleueNavigatorPlugin};
 
 fn main() {
     App::new()
@@ -88,29 +88,29 @@ fn setup(
         simple: navmeshes.add(NavMesh::from_polyanya_mesh(
             polyanya::Mesh::new(
                 vec![
-                    polyanya::Vertex::new(Vec2::new(0., 6.), vec![0, u32::MAX]),
-                    polyanya::Vertex::new(Vec2::new(2., 5.), vec![0, u32::MAX, 2]),
-                    polyanya::Vertex::new(Vec2::new(5., 7.), vec![0, 2, u32::MAX]),
-                    polyanya::Vertex::new(Vec2::new(5., 8.), vec![0, u32::MAX]),
-                    polyanya::Vertex::new(Vec2::new(0., 8.), vec![0, u32::MAX]),
-                    polyanya::Vertex::new(Vec2::new(1., 4.), vec![1, u32::MAX]),
-                    polyanya::Vertex::new(Vec2::new(2., 1.), vec![1, u32::MAX]),
-                    polyanya::Vertex::new(Vec2::new(4., 1.), vec![1, u32::MAX]),
-                    polyanya::Vertex::new(Vec2::new(4., 2.), vec![1, u32::MAX, 2]),
-                    polyanya::Vertex::new(Vec2::new(2., 4.), vec![1, 2, u32::MAX]),
-                    polyanya::Vertex::new(Vec2::new(7., 4.), vec![2, u32::MAX, 4]),
-                    polyanya::Vertex::new(Vec2::new(10., 7.), vec![2, 4, 6, u32::MAX, 3]),
-                    polyanya::Vertex::new(Vec2::new(7., 7.), vec![2, 3, u32::MAX]),
-                    polyanya::Vertex::new(Vec2::new(11., 8.), vec![3, u32::MAX]),
-                    polyanya::Vertex::new(Vec2::new(7., 8.), vec![3, u32::MAX]),
-                    polyanya::Vertex::new(Vec2::new(7., 0.), vec![5, 4, u32::MAX]),
-                    polyanya::Vertex::new(Vec2::new(11., 3.), vec![4, 5, u32::MAX]),
-                    polyanya::Vertex::new(Vec2::new(11., 5.), vec![4, u32::MAX, 6]),
-                    polyanya::Vertex::new(Vec2::new(12., 0.), vec![5, u32::MAX]),
-                    polyanya::Vertex::new(Vec2::new(12., 3.), vec![5, u32::MAX]),
-                    polyanya::Vertex::new(Vec2::new(13., 5.), vec![6, u32::MAX]),
-                    polyanya::Vertex::new(Vec2::new(13., 7.), vec![6, u32::MAX]),
-                    polyanya::Vertex::new(Vec2::new(1., 3.), vec![1, u32::MAX]),
+                    polyanya::Vertex::new(NavVec2::new(0., 6.), vec![0, u32::MAX]),
+                    polyanya::Vertex::new(NavVec2::new(2., 5.), vec![0, u32::MAX, 2]),
+                    polyanya::Vertex::new(NavVec2::new(5., 7.), vec![0, 2, u32::MAX]),
+                    polyanya::Vertex::new(NavVec2::new(5., 8.), vec![0, u32::MAX]),
+                    polyanya::Vertex::new(NavVec2::new(0., 8.), vec![0, u32::MAX]),
+                    polyanya::Vertex::new(NavVec2::new(1., 4.), vec![1, u32::MAX]),
+                    polyanya::Vertex::new(NavVec2::new(2., 1.), vec![1, u32::MAX]),
+                    polyanya::Vertex::new(NavVec2::new(4., 1.), vec![1, u32::MAX]),
+                    polyanya::Vertex::new(NavVec2::new(4., 2.), vec![1, u32::MAX, 2]),
+                    polyanya::Vertex::new(NavVec2::new(2., 4.), vec![1, 2, u32::MAX]),
+                    polyanya::Vertex::new(NavVec2::new(7., 4.), vec![2, u32::MAX, 4]),
+                    polyanya::Vertex::new(NavVec2::new(10., 7.), vec![2, 4, 6, u32::MAX, 3]),
+                    polyanya::Vertex::new(NavVec2::new(7., 7.), vec![2, 3, u32::MAX]),
+                    polyanya::Vertex::new(NavVec2::new(11., 8.), vec![3, u32::MAX]),
+                    polyanya::Vertex::new(NavVec2::new(7., 8.), vec![3, u32::MAX]),
+                    polyanya::Vertex::new(NavVec2::new(7., 0.), vec![5, 4, u32::MAX]),
+                    polyanya::Vertex::new(NavVec2::new(11., 3.), vec![4, 5, u32::MAX]),
+                    polyanya::Vertex::new(NavVec2::new(11., 5.), vec![4, u32::MAX, 6]),
+                    polyanya::Vertex::new(NavVec2::new(12., 0.), vec![5, u32::MAX]),
+                    polyanya::Vertex::new(NavVec2::new(12., 3.), vec![5, u32::MAX]),
+                    polyanya::Vertex::new(NavVec2::new(13., 5.), vec![6, u32::MAX]),
+                    polyanya::Vertex::new(NavVec2::new(13., 7.), vec![6, u32::MAX]),
+                    polyanya::Vertex::new(NavVec2::new(1., 3.), vec![1, u32::MAX]),
                 ],
                 vec![
                     polyanya::Polygon::new(vec![0, 1, 2, 3, 4], true),
@@ -130,6 +130,7 @@ fn setup(
     commands.insert_resource(AURORA);
 }
 
+#[allow(clippy::too_many_arguments)]
 fn on_mesh_change(
     mesh: Res<MeshDetails>,
     mut commands: Commands,
@@ -163,7 +164,7 @@ fn on_mesh_change(
             *current_mesh_entity = Some(
                 commands
                     .spawn((
-                        Mesh2d(meshes.add(navmesh.to_mesh()).into()),
+                        Mesh2d(meshes.add(navmesh.to_mesh())),
                         Transform::from_translation(Vec3::new(
                             -mesh.size.x / 2.0 * factor,
                             -mesh.size.y / 2.0 * factor,
@@ -204,21 +205,21 @@ fn on_mesh_change(
                             .to_string(),
                         ),
                         TextFont {
-                            font_size: 25.0,
+                            font_size: 25.0.into(),
                             ..default()
                         },
                     ));
                     p.spawn((
                         TextSpan::new("Press spacebar to switch mesh\n".to_string()),
                         TextFont {
-                            font_size: 15.0,
+                            font_size: 15.0.into(),
                             ..default()
                         },
                     ));
                     p.spawn((
                         TextSpan::new("Click to find a path".to_string()),
                         TextFont {
-                            font_size: 15.0,
+                            font_size: 15.0.into(),
                             ..default()
                         },
                     ));
@@ -243,11 +244,11 @@ fn mesh_change(
     if mouse_input.just_released(MouseButton::Left) {
         *pressed_since = None;
     }
-    if let Some(started) = *pressed_since {
-        if (time.elapsed() - started).as_secs() > 1 {
-            touch_triggered = true;
-            *pressed_since = None;
-        }
+    if let Some(started) = *pressed_since
+        && (time.elapsed() - started).as_secs() > 1
+    {
+        touch_triggered = true;
+        *pressed_since = None;
     }
     if keyboard_input.just_pressed(KeyCode::Space) || touch_triggered {
         match mesh.mesh {
@@ -274,6 +275,7 @@ struct Path {
     path: Vec<Vec2>,
 }
 
+#[allow(clippy::too_many_arguments)]
 fn on_click(
     mouse_button_input: Res<ButtonInput<MouseButton>>,
     primary_window: Single<&Window, With<PrimaryWindow>>,
@@ -375,7 +377,9 @@ fn poll_path_tasks(mut commands: Commands, computing: Query<(Entity, &FindingPat
             if let Some(path) = task.0.take() {
                 commands
                     .entity(entity)
-                    .insert(Path { path: path.path })
+                    .insert(Path {
+                        path: path.path.into_iter().map(|p| Vec2::new(p.x, p.y)).collect(),
+                    })
                     .remove::<FindingPath>();
             } else {
                 info!("no path found");

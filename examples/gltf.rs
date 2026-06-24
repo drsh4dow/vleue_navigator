@@ -73,7 +73,7 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
         Camera3d::default(),
         Camera::default(),
         #[cfg(not(target_arch = "wasm32"))]
-        bevy::render::view::Hdr,
+        bevy::camera::Hdr,
         Transform::from_xyz(0.0, 70.0, 5.0).looking_at(Vec3::new(0.0, 0.3, 0.0), Vec3::Y),
     ));
 
@@ -88,7 +88,7 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
         ))
         .with_children(|p| {
             let font_size = TextFont {
-                font_size: 20.0,
+                font_size: 20.0.into(),
                 ..default()
             };
             p.spawn((
@@ -184,7 +184,7 @@ fn setup_scene(
                 SpotLight {
                     intensity: 1000000.0,
                     color: palettes::css::SEA_GREEN.into(),
-                    shadows_enabled: true,
+                    shadow_maps_enabled: true,
                     inner_angle: 0.5,
                     outer_angle: 0.8,
                     range: 250.0,
@@ -252,7 +252,7 @@ fn setup_scene(
                         color: palettes::css::BLUE.into(),
                         range: 500.0,
                         intensity: 100000.0,
-                        shadows_enabled: true,
+                        shadow_maps_enabled: true,
                         ..default()
                     },
                     Transform::from_xyz(0.0, 1.2, 0.0),
@@ -305,7 +305,7 @@ fn give_target_auto(
                     target.spawn((
                         PointLight {
                             color: palettes::css::RED.into(),
-                            shadows_enabled: true,
+                            shadow_maps_enabled: true,
                             range: 10.0,
                             ..default()
                         },
@@ -322,6 +322,7 @@ fn give_target_auto(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn give_target_on_click(
     mut commands: Commands,
     mut object_query: Query<(Entity, &Transform, &mut Object)>,
@@ -371,7 +372,7 @@ fn give_target_on_click(
                         target.spawn((
                             PointLight {
                                 color: palettes::css::RED.into(),
-                                shadows_enabled: true,
+                                shadow_maps_enabled: true,
                                 range: 10.0,
                                 ..default()
                             },

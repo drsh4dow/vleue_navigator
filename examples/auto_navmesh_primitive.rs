@@ -76,10 +76,10 @@ fn setup(mut commands: Commands) {
             // Define the outer borders of the navmesh.
             // This will be in navmesh coordinates
             fixed: Triangulation::from_outer_edges(&[
-                vec2(0.0, 0.0),
-                vec2(MESH_WIDTH as f32, 0.0),
-                vec2(MESH_WIDTH as f32, MESH_HEIGHT as f32),
-                vec2(0.0, MESH_HEIGHT as f32),
+                nav_vec2(0.0, 0.0),
+                nav_vec2(MESH_WIDTH as f32, 0.0),
+                nav_vec2(MESH_WIDTH as f32, MESH_HEIGHT as f32),
+                nav_vec2(0.0, MESH_HEIGHT as f32),
             ]),
             // Starting with a small mesh simplification factor to avoid very small geometry.
             // Small geometry can make navmesh generation fail due to rounding errors.

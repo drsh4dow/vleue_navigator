@@ -1,6 +1,6 @@
 [package]
 name = "vleue_navigator"
-version = "0.15.0"
+version = "0.16.0"
 authors = ["François Mockers <francois.mockers@vleue.com>"]
 edition = "2024"
 license = "MIT OR Apache-2.0"
@@ -16,15 +16,16 @@ categories = ["game-development"]
 itertools = "0.14"
 tracing = { version = "0.1", optional = true }
 log = "0.4.27"
+polyanya_glam = { package = "glam", version = "0.30.8" }
 
 [dependencies.avian2d]
-version = "0.5"
+version = "0.7"
 features = ["2d", "f32", "parry-f32"]
 default-features = false
 optional = true
 
 [dependencies.avian3d]
-version = "0.5"
+version = "0.7"
 features = ["3d", "f32", "parry-f32"]
 default-features = false
 optional = true
@@ -33,7 +34,7 @@ optional = true
 version = "0.16.0"
 
 [dependencies.bevy]
-version = "0.18.0"
+version = "0.19.0"
 features = ["bevy_render", "bevy_asset", "bevy_log"]
 default-features = false
 
@@ -47,7 +48,7 @@ version = "0.16.0"
 features = ["serde"]
 
 [dev-dependencies.bevy]
-version = "0.18.0"
+version = "0.19.0"
 
 [features]
 default = ["debug-with-gizmos"]
